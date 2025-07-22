@@ -1,0 +1,683 @@
+apiVersion: perses.dev/v1alpha1
+kind: PersesDashboard
+metadata:
+    name: inference-gateway
+spec:
+    display:
+        name: Inference Gateway
+    variables:
+        - kind: ListVariable
+          spec:
+            display:
+                name: datasource
+                hidden: false
+            defaultValue: d3d7e79a-f83c-46ad-8326-cdd0108978b3
+            allowAllValue: false
+            allowMultiple: false
+            plugin:
+                kind: DatasourceVariable
+                spec:
+                    datasourcePluginKind: prometheus
+            name: DS_PROMETHEUS
+    panels:
+        "0":
+            kind: Panel
+            spec:
+                display:
+                    name: empty
+                plugin:
+                    kind: Markdown
+                    spec:
+                        text: |-
+                            # Inferece Gateway Dashboard
+
+                            Please see https://github.com/kubernetes-sigs/gateway-api-inference-extension/tree/main/pkg/epp/metrics for more details of underlying metrics used in the dashboard.
+        "1_0":
+            kind: Panel
+            spec:
+                display:
+                    name: Average KV Cache Utilization
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                        yAxis:
+                            format:
+                                unit: percent-decimal
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(name) (inference_pool_average_kv_cache_utilization)
+        "1_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Average Queue Size
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(name) (inference_pool_average_queue_size)
+        "1_2":
+            kind: Panel
+            spec:
+                display:
+                    name: Queue Size Per Pod
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: sum by(name, model_server_pod, pod) (inference_pool_per_pod_queue_size)
+        "2_0":
+            kind: Panel
+            spec:
+                display:
+                    name: E2E Request Latency
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                        yAxis:
+                            format:
+                                unit: seconds
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(inference_model_request_duration_seconds_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(inference_model_request_duration_seconds_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(inference_model_request_duration_seconds_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "2_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Request / s
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                minStep: ""
+                                query: sum by(model_name, target_model_name) (rate(inference_model_request_total{}[$__rate_interval]))
+        "2_2":
+            kind: Panel
+            spec:
+                display:
+                    name: Request Error / s
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                minStep: ""
+                                query: sum by(error_code, model_name, target_model_name) (rate(inference_model_request_error_total[$__rate_interval]))
+        "2_3":
+            kind: Panel
+            spec:
+                display:
+                    name: Request Size
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(inference_model_request_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(inference_model_request_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(inference_model_request_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "2_4":
+            kind: Panel
+            spec:
+                display:
+                    name: Response Size
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(inference_model_response_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(inference_model_response_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(inference_model_response_sizes_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "2_5":
+            kind: Panel
+            spec:
+                display:
+                    name: Input Token Count
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(inference_model_input_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(inference_model_input_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(inference_model_input_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "2_6":
+            kind: Panel
+            spec:
+                display:
+                    name: Output Token Count
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(inference_model_output_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(inference_model_output_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(inference_model_output_tokens_bucket{}[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "3_0":
+            kind: Panel
+            spec:
+                display:
+                    name: Token Throughput
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(model_name) (rate(vllm:prompt_tokens_total[$__rate_interval]))
+                                seriesNameFormat: Prompt Tokens/Sec
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: sum by(model_name) (rate(vllm:generation_tokens_total[$__rate_interval]))
+                                seriesNameFormat: Generation Tokens/Sec
+        "3_1":
+            kind: Panel
+            spec:
+                display:
+                    name: E2E Request Latency
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(vllm:e2e_request_latency_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "3_2":
+            kind: Panel
+            spec:
+                display:
+                    name: Time Per Output Token Latency
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(vllm:time_per_output_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 50%
+        "3_3":
+            kind: Panel
+            spec:
+                display:
+                    name: Time To First Token Latency
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0
+                            connectNulls: false
+                            display: line
+                            lineWidth: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 95%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.9, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 90%
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                datasource:
+                                    kind: PrometheusDatasource
+                                    name: ${DS_PROMETHEUS}
+                                query: histogram_quantile(0.5, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket[$__rate_interval])))
+                                seriesNameFormat: 50%
+    layouts:
+        - kind: Grid
+          spec:
+            items:
+                - x: 0
+                  "y": 0
+                  width: 20
+                  height: 3
+                  content:
+                    $ref: '#/spec/panels/0'
+        - kind: Grid
+          spec:
+            display:
+                title: Inference Pool
+                collapse:
+                    open: false
+            items:
+                - x: 0
+                  "y": 4
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_0'
+                - x: 10
+                  "y": 4
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_1'
+                - x: 0
+                  "y": 12
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_2'
+        - kind: Grid
+          spec:
+            display:
+                title: Inference Model
+                collapse:
+                    open: false
+            items:
+                - x: 0
+                  "y": 5
+                  width: 20
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_0'
+                - x: 0
+                  "y": 13
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_1'
+                - x: 10
+                  "y": 13
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_2'
+                - x: 0
+                  "y": 21
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_3'
+                - x: 10
+                  "y": 21
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_4'
+                - x: 0
+                  "y": 29
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_5'
+                - x: 10
+                  "y": 29
+                  width: 10
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_6'
+        - kind: Grid
+          spec:
+            display:
+                title: vLLM
+                collapse:
+                    open: false
+            items:
+                - x: 0
+                  "y": 60
+                  width: 10
+                  height: 7
+                  content:
+                    $ref: '#/spec/panels/3_0'
+                - x: 10
+                  "y": 60
+                  width: 10
+                  height: 7
+                  content:
+                    $ref: '#/spec/panels/3_1'
+                - x: 0
+                  "y": 67
+                  width: 10
+                  height: 7
+                  content:
+                    $ref: '#/spec/panels/3_2'
+                - x: 10
+                  "y": 67
+                  width: 10
+                  height: 7
+                  content:
+                    $ref: '#/spec/panels/3_3'
+    duration: 1h
+

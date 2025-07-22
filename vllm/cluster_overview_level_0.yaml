@@ -1,0 +1,1013 @@
+apiVersion: perses.dev/v1alpha1
+kind: PersesDashboard
+metadata:
+    name: cluster-overview
+spec:
+    display:
+        name: Cluster Overview (Level-0) - Fixed
+    variables:
+        - kind: ListVariable
+          spec:
+            display:
+                name: datasource
+                hidden: false
+            defaultValue: prometheus
+            allowAllValue: false
+            allowMultiple: false
+            plugin:
+                kind: DatasourceVariable
+                spec:
+                    datasourcePluginKind: prometheus
+            name: DS_PROMETHEUS
+        - kind: ListVariable
+          spec:
+            display:
+                name: Namespace
+                hidden: false
+            defaultValue: $__all
+            allowAllValue: true
+            allowMultiple: true
+            plugin:
+                kind: PrometheusLabelValuesVariable
+                spec:
+                    labelName: namespace
+                    matchers:
+                        - kube_deployment_status_replicas_ready
+            name: namespace
+        - kind: ListVariable
+          spec:
+            display:
+                name: Deployment
+                hidden: false
+            defaultValue: $__all
+            allowAllValue: true
+            allowMultiple: true
+            plugin:
+                kind: PrometheusLabelValuesVariable
+                spec:
+                    labelName: deployment
+                    matchers:
+                        - kube_deployment_status_replicas_ready
+            name: deployment
+        - kind: ListVariable
+          spec:
+            display:
+                name: Instance Type
+                hidden: false
+            defaultValue: $__all
+            allowAllValue: true
+            allowMultiple: true
+            sort: alphabetical-asc
+            plugin:
+                kind: PrometheusLabelValuesVariable
+                spec:
+                    labelName: label_beta_kubernetes_io_instance_type
+                    matchers:
+                        - cluster:capacity_cpu_cores:sum
+            name: instance_type
+    panels:
+        "0_0":
+            kind: Panel
+            spec:
+                display:
+                    name: Nodes
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(kube_node_info)
+        "0_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Active models
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: decimal
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: text
+                                  value: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count by (model_name) (vllm:num_requests_running > 0) or count by (model_name) (ovms:num_requests_running > 0)
+                                seriesNameFormat: '{{model_name}}'
+        "0_2":
+            kind: Panel
+            spec:
+                display:
+                    name: CPU cores (total)
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            decimalPlaces: 0
+                            unit: decimal
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: text
+                                  value: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(cluster:capacity_cpu_cores:sum{label_beta_kubernetes_io_instance_type=~"$instance_type"})
+        "0_3":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU count
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(DCGM_FI_DEV_SM_CLOCK) or vector(0)
+        "0_4":
+            kind: Panel
+            spec:
+                display:
+                    name: Memory (total GB)
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            decimalPlaces: 0
+                            unit: decimal
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: text
+                                  value: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(cluster:capacity_memory_bytes:sum{label_beta_kubernetes_io_instance_type=~"$instance_type"}) / 1e9
+        "0_5":
+            kind: Panel
+            spec:
+                display:
+                    name: Network Rx/Tx (MB/s)
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(rate(node_network_receive_bytes_total{device!~"lo|veth.*|docker.*|flannel.*|cali.*|cbr.*"}[5m])) * 8 / 1e6 + sum(rate(node_network_transmit_bytes_total{device!~"lo|veth.*|docker.*|flannel.*|cali.*|cbr.*"}[5m])) * 8 / 1e6
+        "0_6":
+            kind: Panel
+            spec:
+                display:
+                    name: CPU util (%)
+                plugin:
+                    kind: GaugeChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: percent
+                        max: 100
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: yellow
+                                  value: 70
+                                - color: red
+                                  value: 85
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: cluster:node_cpu:ratio * 100
+        "0_7":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU util (%)
+                plugin:
+                    kind: GaugeChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: percent
+                        max: 100
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: yellow
+                                  value: 70
+                                - color: red
+                                  value: 85
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: avg(DCGM_FI_DEV_GPU_UTIL)
+        "0_8":
+            kind: Panel
+            spec:
+                display:
+                    name: Memory util (%)
+                plugin:
+                    kind: GaugeChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: percent
+                        max: 100
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: yellow
+                                  value: 70
+                                - color: red
+                                  value: 85
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: cluster:memory_usage:ratio * 100
+        "0_9":
+            kind: Panel
+            spec:
+                display:
+                    name: Network util (MB/s)
+                plugin:
+                    kind: GaugeChart
+                    spec:
+                        calculation: last-number
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(rate(node_network_receive_bytes_total{device!~"lo|veth.*|docker.*|flannel.*|cali.*|cbr.*"}[5m])) * 8 / 1e6
+        "0_10":
+            kind: Panel
+            spec:
+                display:
+                    name: Resources by Instance Type
+                plugin:
+                    kind: Table
+                    spec:
+                        columnSettings:
+                            - hide: true
+                              name: timestamp
+                            - hide: true
+                              name: label_kubernetes_io_arch
+                            - hide: true
+                              name: label_node_openshift_io_os_id
+                            - hide: true
+                              name: prometheus
+                            - hide: true
+                              name: source
+                            - header: Instance Type
+                              name: label_beta_kubernetes_io_instance_type
+                              width: 150
+                            - header: CPU Cores
+                              name: 'Value #A'
+                              width: 100
+                            - header: Memory (GB)
+                              name: 'Value #B'
+                              width: 120
+                        transforms:
+                            - kind: MergeSeries
+                              spec: {}
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: cluster:capacity_cpu_cores:sum
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: cluster:capacity_memory_bytes:sum / 1e9
+        "1_0":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Allocation
+                    description: GPUs allocated / total
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: decimal
+                        metricLabel: ""
+                        sparkline: {}
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: yellow
+                                  value: 70
+                                - color: red
+                                  value: 90
+                        valueFontSize: 52
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=""})
+                                seriesNameFormat: Allocated
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(DCGM_FI_DEV_SM_CLOCK)
+                                seriesNameFormat: Total
+        "1_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Accelerator Inventory
+                    description: Total GPU inventory showing allocated vs available resources
+                plugin:
+                    kind: BarChart
+                    spec:
+                        calculation: last
+                        format:
+                            unit: decimal
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=""}) or vector(0)
+                                seriesNameFormat: GPU Allocated
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count(DCGM_FI_DEV_SM_CLOCK) - count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=""}) or vector(0)
+                                seriesNameFormat: GPU Available
+        "1_2":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Types
+                plugin:
+                    kind: Table
+                    spec:
+                        columnSettings:
+                            - hide: true
+                              name: timestamp
+                            - header: GPU Type
+                              name: device_name
+                              width: 200
+                            - header: Count
+                              name: 'Value #A'
+                              width: 80
+                            - header: Avg Util %
+                              name: 'Value #B'
+                              width: 100
+                        transforms:
+                            - kind: MergeSeries
+                              spec: {}
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count by (device_name) (DCGM_FI_DEV_SM_CLOCK)
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: avg by (device_name) (DCGM_FI_DEV_GPU_UTIL)
+        "1_3":
+            kind: Panel
+            spec:
+                display:
+                    name: Active Models
+                plugin:
+                    kind: Table
+                    spec:
+                        columnSettings:
+                            - hide: true
+                              name: timestamp
+                            - header: Model
+                              name: model_name
+                              width: 180
+                            - header: Namespace
+                              name: namespace
+                              width: 120
+                            - header: Running
+                              name: 'Value #A'
+                              width: 80
+                            - header: Waiting
+                              name: 'Value #B'
+                              width: 80
+                        transforms:
+                            - kind: MergeSeries
+                              spec: {}
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by (model_name, namespace) (vllm:num_requests_running{namespace=~"$namespace"}) or sum by (model_name, namespace) (ovms:num_requests_running{namespace=~"$namespace"})
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by (model_name, namespace) (vllm:num_requests_waiting{namespace=~"$namespace"}) or sum by (model_name, namespace) (ovms:num_requests_waiting{namespace=~"$namespace"})
+        "1_4":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Utilisation
+                    description: Overall GPU utilization percentage
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.2
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            format:
+                                unit: percent
+                            max: 100
+                            min: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: avg(DCGM_FI_DEV_GPU_UTIL)
+                                seriesNameFormat: GPU Compute %
+        "1_5":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Power Usage
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values:
+                                - mean
+                                - max
+                        visual:
+                            areaOpacity: 0.2
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            min: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: avg(DCGM_FI_DEV_POWER_USAGE)
+                                seriesNameFormat: Avg Power (W)
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: max(DCGM_FI_DEV_POWER_USAGE)
+                                seriesNameFormat: Max Power (W)
+        "1_6":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Memory Usage
+                    description: GPU memory utilization based on used vs free memory
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.2
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            format:
+                                unit: percent
+                            max: 100
+                            min: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: (sum(DCGM_FI_DEV_FB_USED) / sum(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED)) * 100
+                                seriesNameFormat: GPU Memory %
+        "1_7":
+            kind: Panel
+            spec:
+                display:
+                    name: GPU Temperature
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values:
+                                - mean
+                                - max
+                        visual:
+                            areaOpacity: 0.2
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            max: 100
+                            min: 0
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: avg(DCGM_FI_DEV_GPU_TEMP)
+                                seriesNameFormat: Avg Temp
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: max(DCGM_FI_DEV_GPU_TEMP)
+                                seriesNameFormat: Max Temp
+        "2_0":
+            kind: Panel
+            spec:
+                display:
+                    name: Token Throughput (tokens/sec)
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.1
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(model_name) (rate(vllm:generation_tokens_total{namespace=~"$namespace"}[5m])) or sum by(model_name) (rate(ovms:generation_tokens_total{namespace=~"$namespace"}[5m]))
+                                seriesNameFormat: '{{model_name}}'
+        "2_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Request Queue Length
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.1
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            format:
+                                unit: decimal
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(model_name) (vllm:num_requests_waiting{namespace=~"$namespace"}) or sum by(model_name) (ovms:num_requests_waiting{namespace=~"$namespace"})
+                                seriesNameFormat: '{{model_name}}'
+        "2_2":
+            kind: Panel
+            spec:
+                display:
+                    name: Replica Count
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.1
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            format:
+                                unit: decimal
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: count by(deployment) (up{namespace=~"$namespace",pod=~".*$deployment.*"})
+                                seriesNameFormat: '{{deployment}}'
+        "2_3":
+            kind: Panel
+            spec:
+                display:
+                    name: Request Latency (p50/p95)
+                plugin:
+                    kind: TimeSeriesChart
+                    spec:
+                        legend:
+                            mode: list
+                            position: bottom
+                            values: []
+                        visual:
+                            areaOpacity: 0.1
+                            connectNulls: false
+                            display: line
+                            lineWidth: 2
+                        yAxis:
+                            format:
+                                unit: seconds
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.95, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~"$namespace"}[5m]))) or histogram_quantile(0.95, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~"$namespace"}[5m])))
+                                seriesNameFormat: '{{model_name}} - p95'
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: histogram_quantile(0.50, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~"$namespace"}[5m]))) or histogram_quantile(0.50, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~"$namespace"}[5m])))
+                                seriesNameFormat: '{{model_name}} - p50'
+        "3_0":
+            kind: Panel
+            spec:
+                display:
+                    name: Total Errors (5m)
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: decimal
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: red
+                                  value: 1
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(increase(vllm:request_failure_total{namespace=~"$namespace"}[5m])) or sum(increase(ovms:request_failure_total{namespace=~"$namespace"}[5m])) or vector(0)
+        "3_1":
+            kind: Panel
+            spec:
+                display:
+                    name: Success Rate (%)
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: percent
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: red
+                                  value: 0
+                                - color: yellow
+                                  value: 95
+                                - color: green
+                                  value: 99
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: (sum(rate(vllm:request_success_total{namespace=~"$namespace"}[5m])) / (sum(rate(vllm:request_success_total{namespace=~"$namespace"}[5m])) + sum(rate(vllm:request_failure_total{namespace=~"$namespace"}[5m])))) * 100 or (sum(rate(ovms:request_success_total{namespace=~"$namespace"}[5m])) / (sum(rate(ovms:request_success_total{namespace=~"$namespace"}[5m])) + sum(rate(ovms:request_failure_total{namespace=~"$namespace"}[5m])))) * 100 or vector(100)
+        "3_2":
+            kind: Panel
+            spec:
+                display:
+                    name: Pending Requests
+                plugin:
+                    kind: StatChart
+                    spec:
+                        calculation: last-number
+                        format:
+                            unit: decimal
+                        metricLabel: ""
+                        thresholds:
+                            steps:
+                                - color: green
+                                  value: 0
+                                - color: yellow
+                                  value: 10
+                                - color: red
+                                  value: 50
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum(vllm:num_requests_waiting{namespace=~"$namespace"}) or sum(ovms:num_requests_waiting{namespace=~"$namespace"}) or vector(0)
+        "3_3":
+            kind: Panel
+            spec:
+                display:
+                    name: Request Finish Reasons
+                plugin:
+                    kind: PieChart
+                    spec:
+                        calculation: last-number
+                        legend:
+                            mode: list
+                            position: right
+                        radius: 50
+                queries:
+                    - kind: TimeSeriesQuery
+                      spec:
+                        plugin:
+                            kind: PrometheusTimeSeriesQuery
+                            spec:
+                                query: sum by(finished_reason) (increase(vllm:request_success_total{namespace=~"$namespace"}[5m])) or sum by(finished_reason) (increase(ovms:request_success_total{namespace=~"$namespace"}[5m]))
+                                seriesNameFormat: '{{finished_reason}}'
+    layouts:
+        - kind: Grid
+          spec:
+            display:
+                title: Cluster overview
+                collapse:
+                    open: true
+            items:
+                - x: 0
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_0'
+                - x: 4
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_1'
+                - x: 8
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_2'
+                - x: 12
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_3'
+                - x: 16
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_4'
+                - x: 20
+                  "y": 1
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_5'
+                - x: 0
+                  "y": 5
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_6'
+                - x: 4
+                  "y": 5
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_7'
+                - x: 8
+                  "y": 5
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_8'
+                - x: 12
+                  "y": 5
+                  width: 4
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_9'
+                - x: 16
+                  "y": 5
+                  width: 8
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/0_10'
+        - kind: Grid
+          spec:
+            display:
+                title: GPU Resources & Utilisation
+                collapse:
+                    open: true
+            items:
+                - x: 0
+                  "y": 10
+                  width: 8
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/1_0'
+                - x: 8
+                  "y": 10
+                  width: 16
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/1_1'
+                - x: 0
+                  "y": 14
+                  width: 24
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/1_2'
+                - x: 0
+                  "y": 18
+                  width: 24
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/1_3'
+                - x: 0
+                  "y": 22
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_4'
+                - x: 12
+                  "y": 22
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_5'
+                - x: 0
+                  "y": 30
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_6'
+                - x: 12
+                  "y": 30
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/1_7'
+        - kind: Grid
+          spec:
+            display:
+                title: Performance
+                collapse:
+                    open: true
+            items:
+                - x: 0
+                  "y": 39
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_0'
+                - x: 12
+                  "y": 39
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_1'
+                - x: 0
+                  "y": 47
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_2'
+                - x: 12
+                  "y": 47
+                  width: 12
+                  height: 8
+                  content:
+                    $ref: '#/spec/panels/2_3'
+        - kind: Grid
+          spec:
+            display:
+                title: Health & Errors
+                collapse:
+                    open: true
+            items:
+                - x: 0
+                  "y": 56
+                  width: 6
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/3_0'
+                - x: 6
+                  "y": 56
+                  width: 6
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/3_1'
+                - x: 12
+                  "y": 56
+                  width: 6
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/3_2'
+                - x: 18
+                  "y": 56
+                  width: 6
+                  height: 4
+                  content:
+                    $ref: '#/spec/panels/3_3'
+    duration: 1h
+
