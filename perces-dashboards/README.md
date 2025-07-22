@@ -8,7 +8,7 @@ This directory contains Kustomize templates for deploying RHOAI (Red Hat OpenShi
 - `kubectl` configured to communicate with your cluster
 - `kustomize` (v4.5.0 or later) installed
 - `Cluster Observability Operator` (v1.2.1 or later)
-- `Perses` Tech Preview Enabled 
+- `Perses` Tech Preview Enabled
 
 ## Quickstart
 
