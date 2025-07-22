@@ -10,7 +10,7 @@ spec:
     matchLabels:
       dashboards: grafana
   folder: "RHOAI Single Model Serving Dashboards"
-  json:
+  json: |
     {
         "uid": "cluster-overview",
         "title": "Cluster Overview (Level-0) - Fixed",

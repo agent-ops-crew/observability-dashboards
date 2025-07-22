@@ -10,7 +10,7 @@ spec:
     matchLabels:
       dashboards: grafana
   folder: "RHOAI Single Model Serving Dashboards"
-  json:
+  json: |
     {
       "__inputs": [
         {
