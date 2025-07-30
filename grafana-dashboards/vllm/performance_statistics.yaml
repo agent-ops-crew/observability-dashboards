@@ -8,7 +8,7 @@ metadata:
 spec:
   instanceSelector:
     matchLabels:
-      dashboards: grafana
+      dashboards: grafana-a
   folder: "RHOAI Single Model Serving Dashboards"
   json: |
     {
