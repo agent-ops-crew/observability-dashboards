@@ -111,7 +111,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "gridPos": {"x": 4, "y": 1, "w": 4, "h": 4},
           "targets": [
-            { "expr": "count(DCGM_FI_DEV_SM_CLOCK) or vector(0)", "refId": "A" }
+            { "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_namespace=~\"$namespace\"}) or count(DCGM_FI_DEV_SM_CLOCK) or vector(0)", "refId": "A" }
           ]
         },
         {
@@ -283,7 +283,7 @@ spec:
           "gridPos": {"x": 0, "y": 5, "w": 6, "h": 4},
           "targets": [
             {
-              "expr": "cluster:node_cpu:ratio * 100",
+              "expr": "(sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\"}[5m])) / sum(kube_node_status_allocatable{resource=\"cpu\",unit=\"core\"})) * 100",
               "refId": "A"
             }
           ],
@@ -324,7 +324,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "gridPos": {"x": 6, "y": 5, "w": 6, "h": 4},
           "targets": [
-            { "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", "refId": "A" }
+            { "expr": "avg(DCGM_FI_DEV_GPU_UTIL{exported_namespace=~\"$namespace\"}) or avg(DCGM_FI_DEV_GPU_UTIL)", "refId": "A" }
           ],
           "options": {
             "minVizHeight": 75,
@@ -365,7 +365,7 @@ spec:
         
           "targets": [
             {
-              "expr": "cluster:memory_usage:ratio * 100",
+              "expr": "(sum(container_memory_working_set_bytes{namespace=~\"$namespace\"}) / sum(kube_node_status_allocatable{resource=\"memory\",unit=\"byte\"})) * 100",
               "refId": "A"
             }
           ],
@@ -409,7 +409,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "gridPos": {"x": 18, "y": 5, "w": 6, "h": 4},
           "targets": [
-            { "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|flannel.*|cali.*|cbr.*\"}[5m])) * 8 / 1e6", "refId": "A" }
+            { "expr": "sum(rate(container_network_receive_bytes_total{namespace=~\"$namespace\"}[5m])) * 8 / 1e6 or sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|flannel.*|cali.*|cbr.*\"}[5m])) * 8 / 1e6", "refId": "A" }
           ],
           "options": {
             "minVizHeight": 75,
@@ -441,12 +441,12 @@ spec:
           "gridPos": {"x": 0, "y": 10, "w": 6, "h": 4},
           "targets": [
             {
-              "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\"})",
+              "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\",exported_namespace=~\"$namespace\"})",
               "legendFormat": "Allocated",
               "refId": "A"
             },
             {
-              "expr": "count(DCGM_FI_DEV_SM_CLOCK)",
+              "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_namespace=~\"$namespace\"}) or count(DCGM_FI_DEV_SM_CLOCK)",
               "legendFormat": "Total",
               "refId": "B"
             }
@@ -539,12 +539,12 @@ spec:
           "gridPos": {"x": 6, "y": 10, "w": 10, "h": 4},
           "targets": [
             {
-              "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\"}) or vector(0)",
+              "expr": "count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\",exported_namespace=~\"$namespace\"}) or vector(0)",
               "legendFormat": "GPU Allocated",
               "refId": "A"
             },
             {
-              "expr": "count(DCGM_FI_DEV_SM_CLOCK) - count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\"}) or vector(0)",
+              "expr": "(count(DCGM_FI_DEV_SM_CLOCK) - count(DCGM_FI_DEV_SM_CLOCK{exported_pod!=\"\"})) or vector(0)",
               "legendFormat": "GPU Available",
               "refId": "B"
             }
@@ -674,7 +674,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "avg(DCGM_FI_DEV_GPU_UTIL)", 
+              "expr": "avg(DCGM_FI_DEV_GPU_UTIL{exported_namespace=~\"$namespace\"}) or avg(DCGM_FI_DEV_GPU_UTIL)", 
               "legendFormat": "GPU Compute %", 
               "refId": "A" 
             }
@@ -738,7 +738,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "(sum(DCGM_FI_DEV_FB_USED) / sum(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED)) * 100", 
+              "expr": "(sum(DCGM_FI_DEV_FB_USED{exported_namespace=~\"$namespace\"}) / sum(DCGM_FI_DEV_FB_FREE{exported_namespace=~\"$namespace\"} + DCGM_FI_DEV_FB_USED{exported_namespace=~\"$namespace\"})) * 100 or (sum(DCGM_FI_DEV_FB_USED) / sum(DCGM_FI_DEV_FB_FREE + DCGM_FI_DEV_FB_USED)) * 100", 
               "legendFormat": "GPU Memory %", 
               "refId": "A" 
             }
@@ -784,12 +784,12 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "avg(DCGM_FI_DEV_POWER_USAGE)", 
+              "expr": "avg(DCGM_FI_DEV_POWER_USAGE{exported_namespace=~\"$namespace\"}) or avg(DCGM_FI_DEV_POWER_USAGE)", 
               "legendFormat": "Avg Power (W)", 
               "refId": "A" 
             },
             { 
-              "expr": "max(DCGM_FI_DEV_POWER_USAGE)", 
+              "expr": "max(DCGM_FI_DEV_POWER_USAGE{exported_namespace=~\"$namespace\"}) or max(DCGM_FI_DEV_POWER_USAGE)", 
               "legendFormat": "Max Power (W)", 
               "refId": "B" 
             }
@@ -838,12 +838,12 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "avg(DCGM_FI_DEV_GPU_TEMP)", 
+              "expr": "avg(DCGM_FI_DEV_GPU_TEMP{exported_namespace=~\"$namespace\"}) or avg(DCGM_FI_DEV_GPU_TEMP)", 
               "legendFormat": "Avg Temp", 
               "refId": "A" 
             },
             { 
-              "expr": "max(DCGM_FI_DEV_GPU_TEMP)", 
+              "expr": "max(DCGM_FI_DEV_GPU_TEMP{exported_namespace=~\"$namespace\"}) or max(DCGM_FI_DEV_GPU_TEMP)", 
               "legendFormat": "Max Temp", 
               "refId": "B" 
             }
@@ -896,7 +896,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "sum(rate(DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL[5m])) * 8 / 1e9", 
+              "expr": "sum(rate(DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL{exported_namespace=~\"$namespace\"}[5m])) * 8 / 1e9 or sum(rate(DCGM_FI_DEV_NVLINK_BANDWIDTH_TOTAL[5m])) * 8 / 1e9", 
               "legendFormat": "NVLink Bandwidth (Gbps)", 
               "refId": "A" 
             }
@@ -941,7 +941,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "sum(rate(DCGM_FI_PROF_PCIE_TX_BYTES[5m]) + rate(DCGM_FI_PROF_PCIE_RX_BYTES[5m])) * 8 / 1e9", 
+              "expr": "sum(rate(DCGM_FI_PROF_PCIE_TX_BYTES{exported_namespace=~\"$namespace\"}[5m]) + rate(DCGM_FI_PROF_PCIE_RX_BYTES{exported_namespace=~\"$namespace\"}[5m])) * 8 / 1e9 or sum(rate(DCGM_FI_PROF_PCIE_TX_BYTES[5m]) + rate(DCGM_FI_PROF_PCIE_RX_BYTES[5m])) * 8 / 1e9", 
               "legendFormat": "PCIe Bandwidth (Gbps)", 
               "refId": "A" 
             }
@@ -994,12 +994,12 @@ spec:
           "gridPos": {"x": 0, "y": 39, "w": 6, "h": 4},
           "targets": [
             {
-              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"})",
+              "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\",namespace=~\"$namespace\",pod=~\".*$deployment.*\"})",
               "legendFormat": "Requested",
               "refId": "A"
             },
             {
-              "expr": "sum(cluster:capacity_cpu_cores:sum)",
+              "expr": "sum(cluster:capacity_cpu_cores:sum{label_beta_kubernetes_io_instance_type=~\"$instance_type\"})",
               "legendFormat": "Total",
               "refId": "B"
             }
@@ -1092,13 +1092,13 @@ spec:
           "gridPos": {"x": 6, "y": 39, "w": 10, "h": 4},
           "targets": [
             {
-              "expr": "sum(node_cpu_seconds_total{mode=\"idle\"})",
-              "legendFormat": "CPU Idle",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))",
+              "legendFormat": "CPU Used",
               "refId": "A"
             },
             {
-              "expr": "sum(node_cpu_seconds_total{mode!=\"idle\"})",
-              "legendFormat": "CPU Used",
+              "expr": "sum(cluster:capacity_cpu_cores:sum{label_beta_kubernetes_io_instance_type=~\"$instance_type\"}) - sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))",
+              "legendFormat": "CPU Available",
               "refId": "B"
             }
           ],
@@ -1125,7 +1125,7 @@ spec:
                 ]
               },
               {
-                "matcher": { "id": "byName", "options": "CPU Idle" },
+                "matcher": { "id": "byName", "options": "CPU Available" },
                 "properties": [
                   { "id": "color", "value": { "mode": "fixed", "fixedColor": "light-blue" } }
                 ]
@@ -1154,7 +1154,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "cluster:node_cpu:ratio * 100", 
+              "expr": "(sum(rate(container_cpu_usage_seconds_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) / sum(cluster:capacity_cpu_cores:sum{label_beta_kubernetes_io_instance_type=~\"$instance_type\"})) * 100", 
               "legendFormat": "CPU Usage %", 
               "refId": "A" 
             }
@@ -1205,7 +1205,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "cluster:memory_usage:ratio * 100", 
+              "expr": "(sum(container_memory_working_set_bytes{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}) / sum(cluster:capacity_memory_bytes:sum{label_beta_kubernetes_io_instance_type=~\"$instance_type\"})) * 100", 
               "legendFormat": "Memory Usage %", 
               "refId": "A" 
             }
@@ -1384,7 +1384,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "sum by(model_name) (rate(vllm:generation_tokens_total{namespace=~\"$namespace\"}[5m])) or sum by(model_name) (rate(ovms:generation_tokens_total{namespace=~\"$namespace\"}[5m]))",
+              "expr": "sum by(model_name) (rate(vllm:generation_tokens_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) or sum by(model_name) (rate(ovms:generation_tokens_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))",
               "legendFormat": "{{model_name}}",
               "refId": "A"
             }
@@ -1425,7 +1425,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "sum by(model_name) (vllm:num_requests_waiting{namespace=~\"$namespace\"}) or sum by(model_name) (ovms:num_requests_waiting{namespace=~\"$namespace\"})",
+              "expr": "sum by(model_name) (vllm:num_requests_waiting{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}) or sum by(model_name) (ovms:num_requests_waiting{namespace=~\"$namespace\",pod=~\".*$deployment.*\"})",
               "legendFormat": "{{model_name}}",
               "refId": "A"
             }
@@ -1466,12 +1466,12 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             { 
-              "expr": "histogram_quantile(0.95, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) or histogram_quantile(0.95, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~\"$namespace\"}[5m])))", 
+              "expr": "histogram_quantile(0.95, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))) or histogram_quantile(0.95, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])))", 
               "legendFormat": "{{model_name}} - p95", 
               "refId": "A" 
             },
             { 
-              "expr": "histogram_quantile(0.50, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~\"$namespace\"}[5m]))) or histogram_quantile(0.50, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~\"$namespace\"}[5m])))", 
+              "expr": "histogram_quantile(0.50, sum by(model_name, le) (rate(vllm:e2e_request_latency_seconds_bucket{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))) or histogram_quantile(0.50, sum by(le) (rate(rest_client_request_latency_seconds_bucket{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])))", 
               "legendFormat": "{{model_name}} - p50", 
               "refId": "B" 
             }
@@ -1561,7 +1561,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "sum(increase(vllm:request_failure_total{namespace=~\"$namespace\"}[5m])) or sum(increase(ovms:request_failure_total{namespace=~\"$namespace\"}[5m])) or vector(0)",
+              "expr": "sum(increase(vllm:request_failure_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) or sum(increase(ovms:request_failure_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) or vector(0)",
               "refId": "A"
             }
           ],
@@ -1602,7 +1602,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "(sum(rate(vllm:request_success_total{namespace=~\"$namespace\"}[5m])) / (sum(rate(vllm:request_success_total{namespace=~\"$namespace\"}[5m])) + sum(rate(vllm:request_failure_total{namespace=~\"$namespace\"}[5m])))) * 100 or (sum(rate(ovms:request_success_total{namespace=~\"$namespace\"}[5m])) / (sum(rate(ovms:request_success_total{namespace=~\"$namespace\"}[5m])) + sum(rate(ovms:request_failure_total{namespace=~\"$namespace\"}[5m])))) * 100 or vector(100)",
+              "expr": "(sum(rate(vllm:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) / (sum(rate(vllm:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) + sum(rate(vllm:request_failure_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])))) * 100 or (sum(rate(ovms:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) / (sum(rate(ovms:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) + sum(rate(ovms:request_failure_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])))) * 100 or vector(100)",
               "refId": "A"
             }
           ],
@@ -1646,7 +1646,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "sum(vllm:num_requests_waiting{namespace=~\"$namespace\"}) or sum(ovms:num_requests_waiting{namespace=~\"$namespace\"}) or vector(0)",
+              "expr": "sum(vllm:num_requests_waiting{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}) or sum(ovms:num_requests_waiting{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}) or vector(0)",
               "refId": "A"
             }
           ],
@@ -1700,7 +1700,7 @@ spec:
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "targets": [
             {
-              "expr": "sum by(finished_reason) (increase(vllm:request_success_total{namespace=~\"$namespace\"}[5m])) or sum by(finished_reason) (increase(ovms:request_success_total{namespace=~\"$namespace\"}[5m]))",
+              "expr": "sum by(finished_reason) (increase(vllm:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m])) or sum by(finished_reason) (increase(ovms:request_success_total{namespace=~\"$namespace\",pod=~\".*$deployment.*\"}[5m]))",
               "legendFormat": "{{finished_reason}}",
               "refId": "A"
             }
